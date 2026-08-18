@@ -1,0 +1,13 @@
+{
+  "name": "rostercast",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Dependency-free RosterCast frontend prototype",
+  "scripts": {
+    "test": "node --test",
+    "serve": "python3 -m http.server 8000"
+  },
+  "engines": { "node": ">=20" }
+}
+

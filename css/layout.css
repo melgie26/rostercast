@@ -1,0 +1,26 @@
+.app-shell { min-height: 100vh; display: grid; grid-template-columns: 248px minmax(0, 1fr); }
+.sidebar { position: sticky; top: 0; height: 100vh; padding: 1.4rem 1rem; background: var(--brand-900); color: #eaf3f1; display: flex; flex-direction: column; }
+.brand { display: flex; gap: .7rem; align-items: center; padding: .3rem .7rem 1.5rem; font-size: 1.15rem; font-weight: 760; letter-spacing: -.02em; }
+.brand-mark { width: 2rem; height: 2rem; border: 7px solid var(--accent); border-radius: 50% 50% 50% 15%; transform: rotate(-12deg); }
+.nav { display: grid; gap: .3rem; }
+.nav a { padding: .72rem .8rem; border-radius: 9px; text-decoration: none; color: #c9d9d6; font-size: .92rem; font-weight: 620; }
+.nav a:hover, .nav a[aria-current="page"] { background: rgb(255 255 255 / 10%); color: white; }
+.sidebar-footer { margin-top: auto; padding: 1rem .7rem .25rem; font-size: .78rem; color: #a8bfbb; }
+.workspace { min-width: 0; }
+.topbar { min-height: 72px; padding: .8rem clamp(1rem, 4vw, 2.5rem); display: flex; align-items: center; justify-content: space-between; background: rgb(255 255 255 / 86%); border-bottom: 1px solid var(--border); }
+.org-switcher strong, .user-chip strong { display: block; font-size: .86rem; }
+.org-switcher span, .user-chip span { font-size: .75rem; color: var(--muted); }
+.user-chip { text-align: right; }
+.main { padding: clamp(1.2rem, 4vw, 2.5rem); max-width: 1500px; margin: auto; }
+.mobile-bar { display: none; }
+@media (max-width: 760px) {
+  .app-shell { display: block; padding-bottom: 74px; }
+  .sidebar { display: none; }
+  .topbar { min-height: 64px; }
+  .org-switcher strong { max-width: 190px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .user-chip { display: none; }
+  .mobile-bar { position: fixed; z-index: 30; display: grid; grid-template-columns: repeat(6, 1fr); bottom: 0; inset-inline: 0; background: var(--brand-900); border-top: 1px solid #31565a; }
+  .mobile-bar a { color: #bdd0cd; text-decoration: none; text-align: center; padding: .8rem .2rem; font-size: .65rem; }
+  .mobile-bar a[aria-current="page"] { color: var(--accent); }
+}
+

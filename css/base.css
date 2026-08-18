@@ -1,0 +1,15 @@
+* { box-sizing: border-box; }
+html { color-scheme: light; font-family: var(--font); background: var(--canvas); color: var(--ink); }
+body { margin: 0; min-width: 320px; }
+button, input, select, textarea { font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+a { color: inherit; }
+:focus-visible { outline: 3px solid #67a8ff; outline-offset: 2px; }
+h1, h2, h3, p { margin-top: 0; }
+h1 { font-size: clamp(1.65rem, 3vw, 2.25rem); letter-spacing: -.035em; }
+h2 { font-size: 1.1rem; }
+.skip-link { position: fixed; z-index: 100; left: 1rem; top: -5rem; background: white; padding: .75rem 1rem; }
+.skip-link:focus { top: 1rem; }
+.muted { color: var(--muted); }
+.eyebrow { color: var(--brand-700); font-size: .75rem; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+
