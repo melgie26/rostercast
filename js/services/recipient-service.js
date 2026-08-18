@@ -3,7 +3,7 @@ import { CONTACT_STATUS, CONSENT_STATUS } from "../data/schema.js";
 export const EXCLUSION_REASON = Object.freeze({ INACTIVE: "inactive", UNSUBSCRIBED: "unsubscribed", CONSENT_UNKNOWN: "consent_unknown", NOT_FOUND: "not_found" });
 
 export class RecipientService {
-  constructor(store) { this.store = store; }
+  constructor(store, policy = { unknown_consent_eligible: false }) { this.store = store; this.policy = policy; }
   resolve(organizationId, selection = {}) {
     const contacts = this.store.list("contacts", organizationId);
     const memberships = this.store.list("contact_groups", organizationId);
@@ -20,10 +20,9 @@ export class RecipientService {
       let reason = null;
       if (contact.status !== CONTACT_STATUS.ACTIVE) reason = EXCLUSION_REASON.INACTIVE;
       else if (contact.consent_status === CONSENT_STATUS.UNSUBSCRIBED) reason = EXCLUSION_REASON.UNSUBSCRIBED;
-      else if (contact.consent_status !== CONSENT_STATUS.SUBSCRIBED) reason = EXCLUSION_REASON.CONSENT_UNKNOWN;
+      else if (contact.consent_status !== CONSENT_STATUS.SUBSCRIBED && !this.policy.unknown_consent_eligible) reason = EXCLUSION_REASON.CONSENT_UNKNOWN;
       (reason ? excluded : eligible).push(reason ? { contact, reason } : contact);
     }
     return { selected_count: selected.length, eligible_count: eligible.length, excluded_count: excluded.length, selected, eligible, excluded };
   }
 }
-

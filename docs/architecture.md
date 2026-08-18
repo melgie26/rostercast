@@ -2,7 +2,7 @@
 
 ## Scope
 
-This implementation stops after Stage 2. Navigation destinations beyond the dashboard are deliberate placeholders. No operational contact, group, announcement, history, or settings UI is included yet.
+This implementation stops after Stage 3. Dashboard, contact management, organization-managed groups, and staged CSV import are functional. The Announcement composer, operational history detail, and settings UI remain deliberate placeholders.
 
 ## Boundaries
 
@@ -19,7 +19,9 @@ A future backend adapter can replace the local adapter. The backend must enforce
 
 `RecipientService.resolve()` accepts `all`, `group_ids`, and `contact_ids` in any combination. IDs are collected into a set before eligibility evaluation, so overlaps between groups and individuals do not duplicate recipients. The result contains selected and eligible contacts plus excluded contacts with reason codes.
 
-The prototype conservatively excludes inactive, unsubscribed, and unknown-consent contacts. This policy is isolated in the service and should be confirmed before the composer UI is built.
+The prototype conservatively excludes inactive, unsubscribed, and unknown-consent contacts. The policy is injected into the recipient service so future compliance rules can change without redesigning selection. “All Members” is dynamic and is never persisted as a managed group.
+
+CSV import parses, normalizes, and validates entirely before writing. Unknown groups can be selected for explicit creation during confirmation; unresolved and otherwise invalid rows are skipped rather than silently imported.
 
 ## Announcement history
 
@@ -42,4 +44,3 @@ The normalized database is versioned and stored under one namespaced `localStora
 ## Routing and deployment
 
 Hash routing avoids server rewrite requirements and works from a GitHub Pages project subpath. Asset references are document-relative and the app requires no build step.
-

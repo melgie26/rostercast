@@ -1,5 +1,5 @@
-export const SCHEMA_VERSION = 1;
-export const STORAGE_KEY = "rostercast.prototype.v1";
+export const SCHEMA_VERSION = 2;
+export const STORAGE_KEY = "rostercast.prototype.v2";
 
 export const TABLES = Object.freeze([
   "organizations", "users", "organization_users", "contacts", "groups",
@@ -19,4 +19,3 @@ export function validateDatabase(database) {
   for (const table of TABLES) if (!Array.isArray(database[table])) throw new Error(`Missing data table: ${table}`);
   return true;
 }
-

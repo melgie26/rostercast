@@ -25,7 +25,18 @@ export class TenantDataStore {
     this.persist();
     return clone(record);
   }
+  remove(table, organizationId, predicate) {
+    this.requireTable(table);
+    if (!organizationId) throw new Error("organizationId is required");
+    const removed = [];
+    this.database[table] = this.database[table].filter((record) => {
+      const tenantKey = table === "organizations" ? record.id : record.organization_id;
+      if (tenantKey === organizationId && predicate(record)) { removed.push(record); return false; }
+      return true;
+    });
+    this.persist();
+    return clone(removed);
+  }
   export() { return clone(this.database); }
   persist() {}
 }
-
