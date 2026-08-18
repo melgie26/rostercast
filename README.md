@@ -1,6 +1,6 @@
 # RosterCast
 
-RosterCast is a multi-tenant SMS announcement platform prototype. This repository currently contains Stages 1–2: the static application foundation and the local data/domain layer. It intentionally does **not** send SMS, authenticate users, call AI providers, or contain real member data.
+RosterCast is a multi-tenant SMS announcement platform prototype for membership organizations. This repository currently contains Stages 1–2: the static application foundation and the local data/domain layer. It intentionally does **not** send SMS, authenticate users, call AI providers, or contain real member data.
 
 ## Run locally
 
@@ -27,4 +27,3 @@ All included people and contact details are fictional. Browser data is device-lo
 - `tests`: domain, tenant isolation, recipient resolution, snapshots, and SMS boundaries.
 
 Views do not access `localStorage` directly. Services depend on a store contract, allowing a future HTTP-backed store to replace the local adapter. Every organization-owned entity carries `organization_id`, and store reads/writes require a tenant scope.
-
