@@ -31,12 +31,15 @@ try {
   browser=await chromium.launch({headless:true});
   const page=await browser.newPage({viewport:{width:1360,height:950}});const errors=[];
   page.on('pageerror',error=>errors.push(error.message));
+  page.on('response',response=>{if(response.status()>=400)console.log('HTTP',response.status(),new URL(response.url()).pathname);});
   await page.goto('http://localhost:39123');
   await page.locator('#request-code [name="email"]').fill('demo@example.test');
   await page.locator('#request-code button').click();
+  await page.getByText('If your account is enabled, a sign-in code will arrive by email.',{exact:true}).waitFor();
   await page.locator('#verify-code [name="code"]').fill('123456');
   await page.locator('#verify-code button').click();
-  await page.getByRole('heading',{name:'Contacts',exact:true}).waitFor();
+  try { await page.getByRole('heading',{name:'Contacts',exact:true}).waitFor(); } catch(error) { console.log('Account state on failure:',await page.locator('body').innerText());console.log('Browser errors:',errors);throw error; }
+  console.log('Account sign-in passed.');
   await page.locator('#contact-form [name="first_name"]').fill('Fictional');
   await page.locator('#contact-form [name="last_name"]').fill('Member');
   await page.locator('#contact-form [name="mobile"]').fill('4035550101');
