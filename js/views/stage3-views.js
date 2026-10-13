@@ -1,12 +1,14 @@
 import { escapeHtml, formatMobile } from "../utils/html.js";
 
+import { reportingMonth } from "../utils/alberta-time.js";
+
 const badge = (value, tone = value) => `<span class="badge badge-${escapeHtml(tone)}">${escapeHtml(value.replaceAll("_", " "))}</span>`;
 const modal = (title, body, wide = false) => `<div class="modal-backdrop" data-close-modal><section class="modal ${wide ? "modal-wide" : ""}" role="dialog" aria-modal="true" aria-labelledby="modal-title" data-modal><header class="modal-header"><h2 id="modal-title">${escapeHtml(title)}</h2><button class="icon-button" type="button" data-close-modal aria-label="Close">×</button></header>${body}</section></div>`;
 const groupOptions = (groups, selected = []) => groups.map((group) => `<label class="check-row"><input type="checkbox" name="group_ids" value="${group.id}" ${selected.includes(group.id) ? "checked" : ""}> <span>${escapeHtml(group.name)}</span></label>`).join("");
 
 export function dashboardView({ organization, contacts, eligible, groups, announcements }) {
-  const nowMonth = new Date().toISOString().slice(0, 7);
-  const current = announcements.filter(({ created_at }) => created_at.startsWith(nowMonth));
+  const nowMonth = reportingMonth();
+  const current = announcements.filter(({ created_at }) => reportingMonth(created_at) === nowMonth);
   const sent = current.length; const segments = current.reduce((sum, item) => sum + item.total_sms_segments, 0);
   const delivered = current.reduce((sum, item) => sum + (item.delivered ?? item.recipient_count), 0); const recipients = current.reduce((sum, item) => sum + item.recipient_count, 0);
   const percentage = recipients ? `${(delivered / recipients * 100).toFixed(1)}%` : "—";

@@ -31,11 +31,13 @@ test('invalid quantities, monetary precision and unsafe arithmetic are rejected'
   assert.equal(parseScenario({ used: '0', reserved: '0', requested: '1', cap: '1.05', overage_enabled: true }).cap_cents, 105);
   assert.throws(() => quote(parseScenario({ used: '', reserved: '0', requested: '0', cap: '0', overage_enabled: false })));
 });
-test('reporting month uses Mountain time at rollover including winter', () => {
+test('reporting month uses historical Mountain time and permanent Alberta time after November 2026', () => {
   assert.equal(reportingMonth('2026-09-01T05:59:59Z'), '2026-08');
   assert.equal(reportingMonth('2026-09-01T06:00:00Z'), '2026-09');
-  assert.equal(reportingMonth('2027-01-01T06:59:59Z'), '2026-12');
-  assert.equal(reportingMonth('2027-01-01T07:00:00Z'), '2027-01');
+  assert.equal(reportingMonth('2026-01-01T06:59:59Z'), '2025-12');
+  assert.equal(reportingMonth('2026-01-01T07:00:00Z'), '2026-01');
+  assert.equal(reportingMonth('2027-01-01T05:59:59Z'), '2026-12');
+  assert.equal(reportingMonth('2027-01-01T06:00:00Z'), '2027-01');
   assert.throws(() => reportingMonth('not a date'));
 });
 test('usage is scoped to organization/month and simulations never become billable', () => {

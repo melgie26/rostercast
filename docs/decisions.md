@@ -26,3 +26,7 @@ The existing browser prototype now supports composer → test preview → recipi
 Business structure/domain; backend/database hosting; real authentication and server-side roles; Twilio account/subaccounts; sender verification; consent records; signed webhooks; durable sending worker; usage ledger and entitlements; backup recovery; subscription terms and tax configuration.
 
 Do not enable real sends or payments until the relevant milestones are complete and a specific live pilot send is authorized.
+
+## Account foundation — 12 October 2026
+
+Implemented a Node/Supabase account backend and shared roster portal, database isolation rules and automated security tests. Supabase is the implementation target based on the earlier managed PostgreSQL/auth recommendation; no hosted project has been provisioned or charged. Business-owned Supabase and Node hosting accounts, hosted authentication testing and backup/recovery setup remain outstanding. The GitHub Pages demo continues to be a fictional, device-local prototype.

@@ -1,8 +1,10 @@
 import { escapeHtml, formatMobile } from "../utils/html.js";
 import { PLANNING_RATE_CAD } from "../services/simulation-service.js";
 
+import { albertaTimeZone } from "../utils/alberta-time.js";
+
 const money = (n) => new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" }).format(n);
-const date = (value) => new Date(value).toLocaleString("en-CA", { timeZone: "America/Edmonton", dateStyle: "medium", timeStyle: "short" });
+const date = (value) => new Date(value).toLocaleString("en-CA", { timeZone: albertaTimeZone(value), dateStyle: "medium", timeStyle: "short" });
 const reasonLabels = { inactive: "Inactive", unsubscribed: "Unsubscribed", consent_unknown: "Consent unknown", invalid_mobile: "Invalid mobile", duplicate_mobile: "Duplicate phone number" };
 function recipientLists(review) {
   return `<details class="recipient-details"><summary>Eligible recipients (${review.recipients.eligible_count})</summary><ul>${review.recipients.eligible.map((c) => `<li>${escapeHtml(c.first_name)} ${escapeHtml(c.last_name)} <small>${escapeHtml(formatMobile(c.mobile))}</small></li>`).join("") || "<li>None</li>"}</ul></details>
