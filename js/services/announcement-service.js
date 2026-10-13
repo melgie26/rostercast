@@ -20,8 +20,10 @@ export class AnnouncementService {
     return { announcement, deliveries };
   }
   saveSnapshot(organizationId, snapshot) {
-    this.store.put("announcements", organizationId, snapshot.announcement);
-    for (const delivery of snapshot.deliveries) this.store.put("deliveries", organizationId, delivery);
+    this.store.putMany(organizationId, [
+      { table: "announcements", record: snapshot.announcement },
+      ...snapshot.deliveries.map((record) => ({ table: "deliveries", record }))
+    ]);
     return snapshot;
   }
 }

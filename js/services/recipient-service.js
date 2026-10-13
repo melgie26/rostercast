@@ -1,6 +1,7 @@
 import { CONTACT_STATUS, CONSENT_STATUS } from "../data/schema.js";
+import { normalizeCanadianMobile } from "../utils/csv.js";
 
-export const EXCLUSION_REASON = Object.freeze({ INACTIVE: "inactive", UNSUBSCRIBED: "unsubscribed", CONSENT_UNKNOWN: "consent_unknown", NOT_FOUND: "not_found" });
+export const EXCLUSION_REASON = Object.freeze({ INACTIVE: "inactive", UNSUBSCRIBED: "unsubscribed", CONSENT_UNKNOWN: "consent_unknown", NOT_FOUND: "not_found", INVALID_MOBILE: "invalid_mobile", DUPLICATE_MOBILE: "duplicate_mobile" });
 
 export class RecipientService {
   constructor(store, policy = { unknown_consent_eligible: false }) { this.store = store; this.policy = policy; }
@@ -16,12 +17,18 @@ export class RecipientService {
     const selected = [...selectedIds].map((id) => byId.get(id)).filter(Boolean);
     const excluded = [];
     const eligible = [];
+    const phones = new Set();
+    const suppressedPhones = new Set(contacts.filter((contact) => contact.consent_status === CONSENT_STATUS.UNSUBSCRIBED).map((contact) => normalizeCanadianMobile(contact.mobile)).filter(Boolean));
     for (const contact of selected) {
       let reason = null;
+      const mobile = normalizeCanadianMobile(contact.mobile);
       if (contact.status !== CONTACT_STATUS.ACTIVE) reason = EXCLUSION_REASON.INACTIVE;
-      else if (contact.consent_status === CONSENT_STATUS.UNSUBSCRIBED) reason = EXCLUSION_REASON.UNSUBSCRIBED;
+      else if (contact.consent_status === CONSENT_STATUS.UNSUBSCRIBED || suppressedPhones.has(mobile)) reason = EXCLUSION_REASON.UNSUBSCRIBED;
       else if (contact.consent_status !== CONSENT_STATUS.SUBSCRIBED && !this.policy.unknown_consent_eligible) reason = EXCLUSION_REASON.CONSENT_UNKNOWN;
-      (reason ? excluded : eligible).push(reason ? { contact, reason } : contact);
+      else if (!mobile) reason = EXCLUSION_REASON.INVALID_MOBILE;
+      else if (phones.has(mobile)) reason = EXCLUSION_REASON.DUPLICATE_MOBILE;
+      if (reason) excluded.push({ contact, reason });
+      else { phones.add(mobile); eligible.push({ ...contact, mobile }); }
     }
     return { selected_count: selected.length, eligible_count: eligible.length, excluded_count: excluded.length, selected, eligible, excluded };
   }

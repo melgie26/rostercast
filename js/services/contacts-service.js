@@ -6,6 +6,8 @@ export class ContactsService {
   save(organizationId, contact, groupIds = []) {
     const now = new Date().toISOString();
     const record = { created_at: now, ...contact, id: contact.id || `contact_${crypto.randomUUID()}`, organization_id: organizationId, updated_at: now };
+    const existing = contact.id ? this.store.get("contacts", organizationId, contact.id) : null;
+    if (existing?.consent_status === "unsubscribed" && record.consent_status !== "unsubscribed") throw new Error("An opt-out cannot be cleared in contact editing. A documented re-consent workflow is required.");
     if (this.list(organizationId).some((item) => item.mobile === record.mobile && item.id !== record.id)) throw new Error("A contact with this mobile number already exists");
     this.store.put("contacts", organizationId, record);
     this.setGroups(organizationId, record.id, groupIds);
