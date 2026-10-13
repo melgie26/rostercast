@@ -1,4 +1,4 @@
-const ROUTES = new Set(["dashboard", "contacts", "groups", "announcements", "history", "settings"]);
+const ROUTES = new Set(["dashboard", "contacts", "groups", "announcements", "history", "billing", "settings"]);
 
 export function currentRoute(hash = globalThis.location?.hash ?? "") {
   const route = hash.replace(/^#\/?/, "").split("/")[0] || "dashboard";

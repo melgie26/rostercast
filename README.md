@@ -42,3 +42,9 @@ Drafts survive route navigation but not a page reload. Cost estimates are planni
 ## Commercial planning
 
 See [decisions](docs/decisions.md) and [billing architecture](docs/billing.md). The planned paid service bills per organization, with an included segment allowance and authorized overage. Stripe Billing is recommended but not chosen. The subscription layer must enforce sending access server-side; this prototype has no production security boundary.
+
+## Explore usage and subscription planning
+
+Open **Usage & billing** to select a Mountain-time reporting month and see simulated segment totals. The calculator uses the unapproved C$39 / 500 segment / C$0.05 overage illustration; it considers existing usage, queued reservations and the next send against an optional monthly overage cap. Use the button to copy simulated monthly usage into the scenario. Nothing is billed, no subscription is activated, and calculator settings do not affect simulated sending. Scenarios survive navigation only, resetting on reload.
+
+`js/billing/plan-quote.js` contains provider-independent integer-cent arithmetic and validates quantities and overflow. It is reusable calculation code, not server-side authorization or a transactional reservation system. Actual subscription billing cycles and the usage ledger remain production work.

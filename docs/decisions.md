@@ -19,7 +19,7 @@
 
 ## Current milestone
 
-The existing browser prototype now supports composer → test preview → recipient review → confirmed simulated delivery → immutable history. It is device-local and uses fictional contacts. It does not establish secure authentication or production tenant isolation.
+The existing browser prototype now supports composer → test preview → recipient review → confirmed simulated delivery → immutable history. A Usage & billing page now reports simulated activity and demonstrates included allowances and capped overage using unapproved example prices. It is device-local and uses fictional contacts. It does not establish secure authentication or production tenant isolation.
 
 ## Production dependencies
 
