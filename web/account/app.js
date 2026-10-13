@@ -26,7 +26,7 @@ async function action(button, fn) {
 }
 async function loadRoster() {
   const version=++loadVersion, org=state.organizationId, page=state.page;
-  state.contacts=[]; state.groups=[]; render();
+  state.contacts=[]; state.groups=[]; state.editing=null; render();
   const [contacts,groups]=await Promise.all([api(`/organizations/${org}/contacts?page=${page}`),api(`/organizations/${org}/groups`)]);
   if(version!==loadVersion || !state.user) return;
   state.contacts=contacts.contacts; state.groups=groups.groups; render();

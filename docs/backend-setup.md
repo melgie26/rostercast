@@ -62,3 +62,9 @@ Tests exercise the actual application migration in an embedded PostgreSQL engine
 - Test database backup restoration, owner recovery, retention/export procedures and audit access before loading real member data.
 
 Contact edits cannot set consent or clear an opt-out. New records start at unknown consent, and changing a subscribed phone number resets consent to unknown. Opted-out phone numbers remain in a separate suppression table. Complete an evidence-backed consent workflow and inbound STOP handling before sending is enabled. Sending/billing APIs must retain their own transaction, entitlement and reservation checks; roster access does not grant paid sending.
+
+## Alberta reporting time note
+
+CI's newer time-zone data exposed an obsolete winter-time assertion in the earlier billing prototype. Alberta stays on UTC−6 when the former 1 November 2026 fall transition would occur. Reporting and historical-detail formatting now explicitly apply UTC−6 from that point, including on browsers with older IANA data; dates before it retain America/Edmonton historical rules. The dashboard uses the same reporting-month helper as Usage & billing. Future region expansion should make the reporting zone an organisation setting and keep subscription-cycle accounting separate.
+
+Sources checked 12 October 2026: [Alberta Utilities Commission Bulletin 2026-11](https://media.auc.ab.ca/prd-wp-uploads/News/2026/Bulletin%202026-11.pdf) and [Microsoft's Alberta time-zone guidance](https://techcommunity.microsoft.com/blog/dstblog/interim-guidance-for-alberta-time-zone-changes-2026/4545015).

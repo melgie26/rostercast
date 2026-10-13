@@ -1,9 +1,5 @@
-export function reportingMonth(value = new Date()) {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) throw new Error('Invalid reporting date.');
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Edmonton', year: 'numeric', month: '2-digit' }).formatToParts(date);
-  return `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}`;
-}
+import { reportingMonth } from "../utils/alberta-time.js";
+export { reportingMonth } from "../utils/alberta-time.js";
 export class UsageService {
   constructor(store) { this.store = store; }
   summary(organizationId, month = reportingMonth()) {
