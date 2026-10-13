@@ -1,6 +1,6 @@
 const items = [
   ["dashboard", "Dashboard"], ["contacts", "Contacts"], ["groups", "Groups"],
-  ["announcements", "Announcements"], ["history", "History"], ["settings", "Settings"]
+  ["announcements", "Announcements"], ["history", "History"], ["billing", "Usage &amp; billing"], ["settings", "Settings"]
 ];
 
 const nav = (route, className = "nav") => `<nav class="${className}" aria-label="Primary">${items.map(([key, label]) => `<a href="#/${key}" ${route === key ? 'aria-current="page"' : ""}>${label}</a>`).join("")}</nav>`;

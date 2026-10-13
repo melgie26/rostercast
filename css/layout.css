@@ -19,7 +19,7 @@
   .topbar { min-height: 64px; }
   .org-switcher strong { max-width: 190px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .user-chip { display: none; }
-  .mobile-bar { position: fixed; z-index: 30; display: grid; grid-template-columns: repeat(6, 1fr); bottom: 0; inset-inline: 0; background: var(--brand-900); border-top: 1px solid #31565a; }
+  .mobile-bar { position: fixed; z-index: 30; display: grid; grid-template-columns: repeat(7, minmax(78px, 1fr)); overflow-x: auto; bottom: 0; inset-inline: 0; background: var(--brand-900); border-top: 1px solid #31565a; }
   .mobile-bar a { color: #bdd0cd; text-decoration: none; text-align: center; padding: .8rem .2rem; font-size: .65rem; }
   .mobile-bar a[aria-current="page"] { color: var(--accent); }
 }

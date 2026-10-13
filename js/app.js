@@ -12,6 +12,11 @@ import { placeholderView } from "./views/foundation-views.js";
 import { SimulationService } from "./services/simulation-service.js";
 import { announcementView, historyView, settingsView } from "./views/announcement-views.js";
 
+import { UsageService, reportingMonth } from "./services/usage-service.js";
+import { billingView, quoteView } from "./views/billing-view.js";
+import { parseScenario } from "./billing/plan-quote.js";
+
+const billing = { month: reportingMonth(), scenario: { used: "0", reserved: "0", requested: "0", cap: "0.00", overage_enabled: false } };
 const root = document.querySelector("#app"); const store = new LocalStorageAdapter();
 const contactsService = new ContactsService(store); const groupsService = new GroupsService(store);
 const recipientService = new RecipientService(store, { unknown_consent_eligible: false });
@@ -36,10 +41,29 @@ function render(route = state.route) {
   else if (route === "groups") content = groupsView({ ...data, modalGroup: state.modalGroup });
   else if (route === "announcements") content = announcementView({ ...data, ...compose });
   else if (route === "history") content = historyView({ ...data, selectedHistory });
+  else if (route === "billing") content = billingView({ usage: new UsageService(store).summary(organizationId, billing.month), scenario: billing.scenario });
   else if (route === "settings") content = settingsView();
   else content = placeholderView(route);
   root.innerHTML = appShell({ route, organization: data.organization, user: data.user, content: `${state.notice ? `<div class="toast" role="status">${state.notice}</div>` : ""}${content}` });
-  bindEvents(); bindAnnouncementEvents(); document.title = `${route[0]?.toUpperCase()}${route.slice(1)} · RosterCast`;
+  bindEvents(); bindAnnouncementEvents(); bindBillingEvents(); document.title = `${route[0]?.toUpperCase()}${route.slice(1)} · RosterCast`;
+}
+
+function updateBillingQuote() {
+  const form = document.querySelector('#billing-calculator'); if (!form) return;
+  const values = new FormData(form);
+  billing.scenario = Object.fromEntries(['used', 'reserved', 'requested', 'cap'].map(key => [key, values.get(key)]));
+  billing.scenario.overage_enabled = values.has('overage_enabled');
+  document.querySelector('#billing-quote').innerHTML = quoteView(parseScenario(billing.scenario));
+}
+function bindBillingEvents() {
+  document.querySelector('#usage-month')?.addEventListener('change', event => { billing.month = event.target.value; render(); });
+  document.querySelector('#billing-calculator')?.addEventListener('input', updateBillingQuote);
+  document.querySelector('#billing-calculator')?.addEventListener('submit', event => event.preventDefault());
+  document.querySelector('#use-simulated-usage')?.addEventListener('click', () => {
+    document.querySelector('[name="used"]').value = new UsageService(store).summary(organizationId, billing.month).simulated_segments;
+    updateBillingQuote();
+  });
+  updateBillingQuote();
 }
 
 function readDraft() {

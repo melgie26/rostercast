@@ -52,3 +52,9 @@ Use payment-provider test mode to verify checkout, failed payment, cancellation,
 - Fees: https://stripe.com/en-ca/pricing and https://stripe.com/en-ca/billing/pricing
 
 Payment and subscription fees are separate from Twilio. Confirm actual merchant terms before pricing. Determine applicable tax obligations for the business before paid launch; configuring tax collection is not itself a determination of registration obligations.
+
+## Implemented planning milestone — 12 October 2026
+
+The Usage & billing route reports tenant-scoped simulated activity by Mountain-time calendar month, including seeded demo history. Every simulation remains non-billable. A separate interactive scenario uses the illustrative plan above, with overage off by default. Existing usage and queued reservations both consume allowance; the cap covers total overage, not merely the next send. Integer-cent calculations reject invalid, fractional segment and unsafe values. Blocked scenarios still show their hypothetical full cost, explicitly labelled as unauthorized.
+
+This page does not establish a subscription, take payment, persist a billing preference, or gate simulated sending. The pure quote function can be reused behind authenticated server endpoints, but does not implement transactional reservations, a ledger, entitlements or provider integration. These remain prerequisites for paid sending.
