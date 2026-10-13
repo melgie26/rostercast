@@ -1,6 +1,6 @@
 # RosterCast
 
-RosterCast is a multi-tenant SMS announcement platform prototype for membership organizations, owned by Matt Elgie. The prototype includes contact and group management, staged CSV import, an Announcement composer, recipient review, test preview, confirmed simulated delivery, and historical delivery detail. Twilio is selected for the future server-side integration. It intentionally does **not** send real SMS, authenticate users, take payments, call AI providers, or contain real member data.
+RosterCast is a multi-tenant SMS announcement platform prototype for membership organizations, owned by Matt Elgie. The prototype includes contact and group management, staged CSV import, an Announcement composer, recipient review, test preview, confirmed simulated delivery, and historical delivery detail. Twilio is selected for the future server-side integration. The static demonstration does **not** send real SMS, authenticate users, take payments, call AI providers, or contain real member data. A separate account backend is now implemented for hosted authentication and shared roster management; it requires owner-controlled hosting configuration.
 
 ## Run locally
 
@@ -48,3 +48,9 @@ See [decisions](docs/decisions.md) and [billing architecture](docs/billing.md). 
 Open **Usage & billing** to select a Mountain-time reporting month and see simulated segment totals. The calculator uses the unapproved C$39 / 500 segment / C$0.05 overage illustration; it considers existing usage, queued reservations and the next send against an optional monthly overage cap. Use the button to copy simulated monthly usage into the scenario. Nothing is billed, no subscription is activated, and calculator settings do not affect simulated sending. Scenarios survive navigation only, resetting on reload.
 
 `js/billing/plan-quote.js` contains provider-independent integer-cent arithmetic and validates quantities and overflow. It is reusable calculation code, not server-side authorization or a transactional reservation system. Actual subscription billing cycles and the usage ledger remain production work.
+
+## Account backend foundation
+
+See [backend setup](docs/backend-setup.md) for the implemented Node/Supabase account service, database migration, ownership/setup steps and hosted acceptance checks. Run `npm ci && npm start` for the account server; without configuration it displays setup pending. The GitHub Pages demonstration remains independent and device-local. Tests require Node 24 or later; Node 24 is used in CI and the Dockerfile.
+
+The account service supports enabled-user email-code sign-in, HTTP-only encrypted sessions, organisation-scoped shared contacts and group creation. It is not yet connected to a hosted project. Actual sends, payments, consent capture, CSV imports and group assignment remain subsequent account workflows.

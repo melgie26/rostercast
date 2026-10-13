@@ -50,3 +50,7 @@ Hash routing avoids server rewrite requirements and works from a GitHub Pages pr
 ## Subscription and paid access
 
 See [billing.md](billing.md) for proposed organization subscriptions, plan versions, entitlements, reservations, metering ledger, invoice reconciliation and payment-failure behaviour. Simulations are non-billable. The future sending service checks roles, subscription eligibility, consent and authorized budget both before queueing and dispatch. Opt-out processing continues even when paid access ends. Stripe is a recommended billing integration; Twilio is the confirmed SMS provider.
+
+## Account backend foundation
+
+A separate `server/` application and `web/account/` portal now support provider-backed sign-in and shared roster management when configured. The public demonstration's synchronous local adapter remains unchanged. The account portal uses same-origin HTTP endpoints; JWTs stay in encrypted HTTP-only cookies and are forwarded to Supabase using the user's authorization, never a service-role key. The SQL migration implements organisation membership, row-level security, column grants, composite tenant foreign keys, consent/opt-out protections and append-only audit events. See [backend-setup.md](backend-setup.md) for configuration, tested boundaries and work still required before real data is used.
