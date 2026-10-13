@@ -9,11 +9,16 @@ import { CsvImportService } from "./services/csv-import-service.js";
 import { normalizeCanadianMobile } from "./utils/csv.js";
 import { dashboardView, contactsView, groupsView } from "./views/stage3-views.js";
 import { placeholderView } from "./views/foundation-views.js";
+import { SimulationService } from "./services/simulation-service.js";
+import { announcementView, historyView, settingsView } from "./views/announcement-views.js";
 
 const root = document.querySelector("#app"); const store = new LocalStorageAdapter();
 const contactsService = new ContactsService(store); const groupsService = new GroupsService(store);
 const recipientService = new RecipientService(store, { unknown_consent_eligible: false });
 const csvService = new CsvImportService(store, contactsService, groupsService);
+const simulation = new SimulationService(store);
+const compose = { draft: { title: "", body: "", selection: { all: true, group_ids: [], contact_ids: [] } }, review: null, testPreview: false, error: "", requestId: crypto.randomUUID() };
+let selectedHistory = null;
 const state = { route: "dashboard", contactFilters: { q: "", status: "", consent: "", group: "" }, selectedContacts: new Set(), modalContact: undefined, modalGroup: undefined, showImport: false, importPreview: null, importResult: null, createUnknown: new Set(), notice: "" };
 const organizationId = PROTOTYPE_SESSION.organization_id;
 
@@ -21,7 +26,7 @@ function context() {
   const organization = store.get("organizations", organizationId, organizationId);
   const membership = store.list("organization_users", organizationId).find(({ user_id }) => user_id === PROTOTYPE_SESSION.user_id);
   const user = store.export().users.find(({ id }) => id === membership.user_id);
-  return { organization, user, contacts: contactsService.list(organizationId), groups: groupsService.list(organizationId), memberships: contactsService.memberships(organizationId), announcements: store.list("announcements", organizationId) };
+  return { organization, user, contacts: contactsService.list(organizationId), groups: groupsService.list(organizationId), memberships: contactsService.memberships(organizationId), announcements: store.list("announcements", organizationId), deliveries: store.list("deliveries", organizationId) };
 }
 
 function render(route = state.route) {
@@ -29,9 +34,53 @@ function render(route = state.route) {
   if (route === "dashboard") content = dashboardView({ ...data, eligible: recipientService.resolve(organizationId, { all: true }).eligible_count });
   else if (route === "contacts") content = contactsView({ ...data, filters: state.contactFilters, selectedIds: state.selectedContacts, modalContact: state.modalContact, showImport: state.showImport, importPreview: state.importPreview, importResult: state.importResult, createUnknown: state.createUnknown });
   else if (route === "groups") content = groupsView({ ...data, modalGroup: state.modalGroup });
+  else if (route === "announcements") content = announcementView({ ...data, ...compose });
+  else if (route === "history") content = historyView({ ...data, selectedHistory });
+  else if (route === "settings") content = settingsView();
   else content = placeholderView(route);
   root.innerHTML = appShell({ route, organization: data.organization, user: data.user, content: `${state.notice ? `<div class="toast" role="status">${state.notice}</div>` : ""}${content}` });
-  bindEvents(); document.title = `${route[0]?.toUpperCase()}${route.slice(1)} · RosterCast`;
+  bindEvents(); bindAnnouncementEvents(); document.title = `${route[0]?.toUpperCase()}${route.slice(1)} · RosterCast`;
+}
+
+function readDraft() {
+  const form = document.querySelector("#announcement-form");
+  if (!form) return;
+  const data = new FormData(form);
+  compose.draft = { title: data.get("title"), body: data.get("body"), selection: { all: data.has("all"), group_ids: data.getAll("group_ids"), contact_ids: data.getAll("contact_ids") } };
+}
+function updateLiveSummary() {
+  readDraft();
+  const target = document.querySelector("#live-sms-summary"); if (!target) return;
+  if (!compose.draft.body.trim()) { target.textContent = "Add a message to see the complete SMS segment count."; return; }
+  try {
+    const preview = simulation.preview(organizationId, { ...compose.draft, title: compose.draft.title || "Untitled", body: compose.draft.body || " " });
+    target.textContent = `${preview.recipients.eligible_count} eligible · ${preview.recipients.excluded_count} excluded · ${preview.calculation.encoding} · ${preview.calculation.segments} SMS each · ${preview.calculation.total_sms_segments} segments total${preview.calculation.explanation ? `. ${preview.calculation.explanation}` : ""}`;
+  } catch (error) { target.textContent = error.message; }
+}
+function reviewAnnouncement(testPreview = false) {
+  readDraft(); compose.error = "";
+  try { compose.review = simulation.preview(organizationId, compose.draft); compose.testPreview = testPreview; }
+  catch (error) { compose.error = error.message; compose.review = null; }
+  render(); document.querySelector("#back-to-compose")?.focus();
+}
+function bindAnnouncementEvents() {
+  document.querySelector("#announcement-form")?.addEventListener("input", updateLiveSummary);
+  document.querySelector("#announcement-form")?.addEventListener("change", updateLiveSummary);
+  document.querySelector("#announcement-form")?.addEventListener("submit", (event) => { event.preventDefault(); reviewAnnouncement(); });
+  document.querySelector("#test-preview")?.addEventListener("click", () => reviewAnnouncement(true));
+  ["#back-to-compose", "#back-to-compose-footer"].forEach((id) => document.querySelector(id)?.addEventListener("click", () => { compose.review = null; compose.error = ""; render(); document.querySelector('[name="body"]')?.focus(); }));
+  document.querySelector("#confirm-simulation")?.addEventListener("click", (event) => {
+    event.currentTarget.disabled = true;
+    try {
+      const result = simulation.send(compose.review, { createdBy: PROTOTYPE_SESSION.user_id, requestId: compose.requestId });
+      selectedHistory = result.announcement.id;
+      compose.draft = { title: "", body: "", selection: { all: true, group_ids: [], contact_ids: [] } }; compose.review = null; compose.error = ""; compose.requestId = crypto.randomUUID();
+      location.hash = "#/history";
+    } catch (error) { compose.error = error.message; render(); }
+  });
+  document.querySelectorAll("[data-history-id]").forEach((button) => button.addEventListener("click", () => { selectedHistory = button.dataset.historyId; render(); }));
+  document.querySelector("#close-history")?.addEventListener("click", () => { selectedHistory = null; render(); });
+  updateLiveSummary();
 }
 
 function closeModal() { state.modalContact = undefined; state.modalGroup = undefined; state.showImport = false; state.importPreview = null; state.importResult = null; state.createUnknown.clear(); render(); }
@@ -71,4 +120,15 @@ function saveGroup(event) {
   try { const existing = id ? groupsService.list(organizationId).find((item) => item.id === id) : {}; const group = groupsService.save(organizationId, { ...existing, id: id || undefined, name: data.get("name") }); if (id) groupsService.setMembers(organizationId, group.id, data.getAll("contact_ids")); closeModal(); notify(id ? "Group updated." : "Group created."); } catch (error) { notify(error.message); }
 }
 
-startRouter((route) => { state.modalContact = undefined; state.modalGroup = undefined; state.showImport = false; render(route); });
+root.addEventListener("keydown", (event) => {
+  const dialog = root.querySelector('[role="dialog"]');
+  if (!dialog || !compose.review) return;
+  if (event.key === "Escape") { compose.review = null; compose.error = ""; render(); root.querySelector('[name="body"]')?.focus(); }
+  if (event.key === "Tab") {
+    const controls = [...dialog.querySelectorAll('button:not(:disabled), input:not(:disabled), summary, [tabindex="0"]')];
+    const first = controls[0], last = controls.at(-1);
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+  }
+});
+startRouter((route) => { compose.review = null; compose.error = ""; state.modalContact = undefined; state.modalGroup = undefined; state.showImport = false; render(route); });
