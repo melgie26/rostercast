@@ -28,4 +28,6 @@ All included people and contact details are fictional. Browser data is device-lo
 
 Views do not access `localStorage` directly. Services depend on a store contract, allowing a future HTTP-backed store to replace the local adapter. Every organization-owned entity carries `organization_id`, and store reads/writes require a tenant scope.
 
-“All Members” is a dynamic recipient selection rather than a managed group. Inactive, unsubscribed, and unknown-consent contacts are excluded from eligible recipients. The Announcement composer and sending workflow are intentionally deferred to the next approved stage.
+“All Members” is a dynamic recipient selection rather than a managed group. Inactive, unsubscribed, and unknown-consent contacts are excluded from eligible recipients. The current Announcement screen demonstrates draft submission and board approval; complete recipient composition and real sending remain deferred.
+
+The prototype now models Airdrie Workspace roles and board approval: stewards may create and submit drafts, while Executive Board members may approve and initiate the simulated send. See `docs/workspace-access.md`. This public static version does not yet perform real Google sign-in or securely verify Google Group membership.

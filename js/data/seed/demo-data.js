@@ -48,17 +48,25 @@ export function createDemoData() {
     { id: "announcement_demo_2", title: "Training registration", body: "Fall training registration closes Friday at noon.", created_at: "2026-08-08T18:30:00.000Z", recipient_count: 21, total_sms_segments: 21, delivered: 21, failed: 0 },
     { id: "announcement_demo_3", title: "Executive board update", body: "Executive board package is ready for review.", created_at: "2026-07-28T16:15:00.000Z", recipient_count: 7, total_sms_segments: 7, delivered: 7, failed: 0 }
   ].map((item) => ({ organization_id: organizationId, created_by: "user_demo_admin", transmitted_body: `APFFA: ${item.body}`, prefix_snapshot: "APFFA: ", suffix_snapshot: "", encoding: "GSM-7", segments_per_recipient: 1, status: "simulated_sent", selection_snapshot: { all: item.id === "announcement_demo_1", group_ids: item.id === "announcement_demo_2" ? [groupId("Alpha Platoon")] : item.id === "announcement_demo_3" ? [groupId("Executive Board")] : [], contact_ids: [] }, calculation_snapshot: { encoding: "GSM-7", segments: 1 }, ...item }));
+  announcements.push({ id: "announcement_demo_pending", organization_id: organizationId, created_by: "user_demo_steward", title: "Station committee reminder", body: "Reminder: Station committee meets Thursday at 6:30 pm.", selection_snapshot: { all: true, group_ids: [], contact_ids: [] }, status: "pending_approval", created_at: "2026-10-13T18:00:00.000Z", updated_at: "2026-10-13T18:05:00.000Z", submitted_at: "2026-10-13T18:05:00.000Z", approved_by: null, approved_at: null });
   return {
     schema_version: SCHEMA_VERSION,
     seeded_at: "2026-08-17T12:00:00.000Z",
     organizations: [{ id: organizationId, name: "Airdrie Professional Firefighters Association", short_name: "APFFA", status: "active", created_at: "2026-07-01T15:00:00.000Z" }],
-    users: [{ id: "user_demo_admin", name: "Morgan Sample", email: "admin@example.invalid" }],
-    organization_users: [{ id: "orguser_demo_admin", organization_id: organizationId, user_id: "user_demo_admin", role: "organization_admin" }],
+    users: [
+      { id: "user_demo_admin", name: "Morgan Sample", email: "board.demo@airdriefirefighters.com" },
+      { id: "user_demo_steward", name: "Taylor Sample", email: "steward.demo@airdriefirefighters.com" }
+    ],
+    organization_users: [
+      { id: "orguser_demo_admin", organization_id: organizationId, user_id: "user_demo_admin", role: "board_admin" },
+      { id: "orguser_demo_steward", organization_id: organizationId, user_id: "user_demo_steward", role: "steward" }
+    ],
     contacts,
     groups: groupNames.map((name) => ({ id: groupId(name), organization_id: organizationId, name, created_at: "2026-07-01T15:00:00.000Z" })),
     contact_groups: makeRelationships(contacts),
     announcements,
     deliveries: [],
-    organization_settings: [{ id: "settings_airdrie_demo", organization_id: organizationId, message_prefix: "APFFA: ", message_suffix: "", updated_at: "2026-07-01T15:00:00.000Z" }]
+    organization_settings: [{ id: "settings_airdrie_demo", organization_id: organizationId, message_prefix: "APFFA: ", message_suffix: "", workspace_domain: "airdriefirefighters.com", executive_group: "exec@airdriefirefighters.com", steward_group: "stewards@airdriefirefighters.com", updated_at: "2026-07-01T15:00:00.000Z" }],
+    audit_events: []
   };
 }

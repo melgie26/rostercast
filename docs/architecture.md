@@ -44,3 +44,9 @@ The normalized database is versioned and stored under one namespaced `localStora
 ## Routing and deployment
 
 Hash routing avoids server rewrite requirements and works from a GitHub Pages project subpath. Asset references are document-relative and the app requires no build step.
+
+## Workspace authorization and approvals
+
+The access model is documented in `docs/workspace-access.md`. Domain and Google Group membership resolve to board administrator, steward, or member roles, with Executive Board membership taking precedence over the nested stewards group. A pure workflow service enforces draft submission, board-only approval/rejection, board-only sending, and audit events independently of UI visibility.
+
+The public static deployment is only a role-workflow demonstration. Real Workspace authentication and group enforcement require a server runtime and shared database before real member information or SMS sending can be enabled.
