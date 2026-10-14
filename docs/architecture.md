@@ -2,7 +2,7 @@
 
 ## Scope
 
-This implementation stops after Stage 3. Dashboard, contact management, organization-managed groups, and staged CSV import are functional. The Announcement composer, operational history detail, and settings UI remain deliberate placeholders.
+This implementation includes the Stage 4 simulated Announcement workflow: composer, audience selection, transmitted-message preview, confirmation and operational history detail. Settings displays the Twilio choice and production boundaries. Real authentication, SMS and billing remain production milestones.
 
 ## Boundaries
 
@@ -25,6 +25,8 @@ CSV import parses, normalizes, and validates entirely before writing. Unknown gr
 
 ## Announcement history
 
+`SimulationService` creates a review from tenant-scoped contacts and settings, then recomputes it at confirmation. A changed recipient set, number, name, message or required text invalidates the review. Normalized phone deduplication and opt-out suppression apply across all matching contacts. Request IDs provide device-local idempotency and cannot be reused for changed content. The store validates batch writes in a staging copy and persists the announcement and deliveries once, rolling back on storage failure. These are prototype safeguards; durable server transactions and authorization remain necessary.
+
 An announcement has an internal, non-transmitted `title`. Send-time records preserve the original body, transmitted body, required-text snapshots, calculation snapshot, encoding, segments, recipient count, total usage, creator, and time. Each delivery preserves contact ID plus name, mobile, status, and consent snapshots. Delivery membership is therefore the authoritative historical recipient list; current groups and contacts are not used to reconstruct it.
 
 ## SMS calculations
@@ -45,8 +47,16 @@ The normalized database is versioned and stored under one namespaced `localStora
 
 Hash routing avoids server rewrite requirements and works from a GitHub Pages project subpath. Asset references are document-relative and the app requires no build step.
 
+## Subscription and paid access
+
+See [billing.md](billing.md) for proposed organization subscriptions, plan versions, entitlements, reservations, metering ledger, invoice reconciliation and payment-failure behaviour. Simulations are non-billable. The future sending service checks roles, subscription eligibility, consent and authorized budget both before queueing and dispatch. Opt-out processing continues even when paid access ends. Stripe is a recommended billing integration; Twilio is the confirmed SMS provider.
+
+## Account backend foundation
+
+A separate `server/` application and `web/account/` portal now support provider-backed sign-in and shared roster management when configured. The public demonstration's synchronous local adapter remains unchanged. The account portal uses same-origin HTTP endpoints; JWTs stay in encrypted HTTP-only cookies and are forwarded to Supabase using the user's authorization, never a service-role key. The SQL migration implements organisation membership, row-level security, column grants, composite tenant foreign keys, consent/opt-out protections and append-only audit events. See [backend-setup.md](backend-setup.md) for configuration, tested boundaries and work still required before real data is used.
+
 ## Workspace authorization and approvals
 
-The access model is documented in `docs/workspace-access.md`. Domain and Google Group membership resolve to board administrator, steward, or member roles, with Executive Board membership taking precedence over the nested stewards group. A pure workflow service enforces draft submission, board-only approval/rejection, board-only sending, and audit events independently of UI visibility.
+The Airdrie access model is documented in [workspace-access.md](workspace-access.md). `exec@airdriefirefighters.com` maps to board administrator and takes precedence over the nested `stewards@airdriefirefighters.com` membership. A pure workflow service enforces steward draft submission, board-only approval/rejection, board-only sending and append-only audit events independently of UI visibility.
 
-The public static deployment is only a role-workflow demonstration. Real Workspace authentication and group enforcement require a server runtime and shared database before real member information or SMS sending can be enabled.
+The public static deployment remains a demonstration. Real Workspace identity and group enforcement require server-side Google token verification and Admin Directory group lookup before any real member data or SMS sending is enabled.

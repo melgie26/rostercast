@@ -1,34 +1,21 @@
 import { escapeHtml, formatMobile } from "../utils/html.js";
 
+import { reportingMonth } from "../utils/alberta-time.js";
+
 const badge = (value, tone = value) => `<span class="badge badge-${escapeHtml(tone)}">${escapeHtml(value.replaceAll("_", " "))}</span>`;
 const modal = (title, body, wide = false) => `<div class="modal-backdrop" data-close-modal><section class="modal ${wide ? "modal-wide" : ""}" role="dialog" aria-modal="true" aria-labelledby="modal-title" data-modal><header class="modal-header"><h2 id="modal-title">${escapeHtml(title)}</h2><button class="icon-button" type="button" data-close-modal aria-label="Close">×</button></header>${body}</section></div>`;
 const groupOptions = (groups, selected = []) => groups.map((group) => `<label class="check-row"><input type="checkbox" name="group_ids" value="${group.id}" ${selected.includes(group.id) ? "checked" : ""}> <span>${escapeHtml(group.name)}</span></label>`).join("");
 
 export function dashboardView({ organization, contacts, eligible, groups, announcements }) {
-  const nowMonth = new Date().toISOString().slice(0, 7);
+  const nowMonth = reportingMonth();
   const sentAnnouncements = announcements.filter(({ status }) => status === "simulated_sent");
-  const current = sentAnnouncements.filter(({ created_at }) => created_at.startsWith(nowMonth));
+  const current = sentAnnouncements.filter(({ created_at }) => reportingMonth(created_at) === nowMonth);
   const sent = current.length; const segments = current.reduce((sum, item) => sum + item.total_sms_segments, 0);
   const delivered = current.reduce((sum, item) => sum + (item.delivered ?? item.recipient_count), 0); const recipients = current.reduce((sum, item) => sum + item.recipient_count, 0);
   const percentage = recipients ? `${(delivered / recipients * 100).toFixed(1)}%` : "—";
   return `<header class="page-header"><div><p class="eyebrow">Organization dashboard</p><h1>${escapeHtml(organization.short_name)} overview</h1><p class="muted">A clear view of your roster and announcement activity.</p></div><a class="button button-accent" href="#/announcements">+ New Announcement</a></header>
   <div class="card-grid metrics" aria-label="Organization metrics"><article class="card"><span class="muted">Active contacts</span><p class="metric">${contacts.filter(({ status }) => status === "active").length}</p></article><article class="card"><span class="muted">Eligible contacts</span><p class="metric">${eligible}</p></article><article class="card"><span class="muted">Announcements this month</span><p class="metric">${sent}</p></article><article class="card"><span class="muted">SMS segments used</span><p class="metric">${segments}</p></article><article class="card"><span class="muted">Delivery rate</span><p class="metric">${percentage}</p></article></div>
   <section class="card section-card"><div class="section-heading"><div><h2>Recent announcements</h2><p class="muted">Simulated activity for ${escapeHtml(organization.name)}</p></div><a href="#/history">View history</a></div>${sentAnnouncements.length ? `<div class="announcement-list">${sentAnnouncements.slice().sort((a,b) => b.created_at.localeCompare(a.created_at)).slice(0,5).map((item) => `<article><div><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.body)}</p></div><div class="announcement-meta"><span>${new Date(item.created_at).toLocaleDateString("en-CA", { month: "short", day: "numeric" })}</span><span>${item.recipient_count} recipients</span>${badge(item.status)}</div></article>`).join("")}</div>` : `<div class="empty-inline">No announcements yet.</div>`}</section>`;
-}
-
-export function announcementsView({ announcements, membership, users }) {
-  const canCompose = ["board_admin", "steward"].includes(membership.role); const isBoard = membership.role === "board_admin";
-  const userMap = new Map(users.map((user) => [user.id, user.name]));
-  const pending = announcements.filter(({ status }) => status === "pending_approval");
-  const drafts = announcements.filter(({ status }) => ["draft", "rejected"].includes(status));
-  return `<header class="page-header"><div><p class="eyebrow">Approval workflow</p><h1>Announcements</h1><p class="muted">Stewards prepare drafts. Executive Board members approve and send.</p></div>${canCompose ? `<button class="button" id="new-draft">New draft</button>` : ""}</header>
-  <div class="workflow-strip" aria-label="Announcement workflow"><span>Draft</span><b>→</b><span>Pending approval</span><b>→</b><span>Approved</span><b>→</b><span>Sent</span></div>
-  ${isBoard ? `<section class="card section-card"><div class="section-heading"><div><h2>Awaiting board approval</h2><p class="muted">${pending.length} announcement${pending.length === 1 ? "" : "s"} require review</p></div></div>${pending.length ? pending.map((item) => `<article class="approval-card"><div><span class="badge badge-warning">Pending approval</span><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.body)}</p><small>Submitted by ${escapeHtml(userMap.get(item.created_by) ?? "Steward")}</small></div><div class="approval-actions"><button class="button button-secondary" data-reject-announcement="${item.id}">Request changes</button><button class="button" data-approve-announcement="${item.id}">Approve &amp; send</button></div></article>`).join("") : `<div class="empty-inline">Nothing is waiting for approval.</div>`}</section>` : ""}
-  <section class="card section-card"><div class="section-heading"><div><h2>${isBoard ? "Drafts" : "My drafts"}</h2><p class="muted">Drafts are never sent without board approval.</p></div></div>${drafts.length ? drafts.map((item) => `<article class="approval-card"><div><span class="badge">${escapeHtml(item.status)}</span><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.body)}</p>${item.rejection_reason ? `<small>Changes requested: ${escapeHtml(item.rejection_reason)}</small>` : ""}</div><button class="button" data-submit-announcement="${item.id}">Submit for approval</button></article>`).join("") : `<div class="empty-inline">No drafts yet.</div>`}</section>`;
-}
-
-export function draftModal() {
-  return modal("New announcement draft", `<form id="draft-form" class="form-grid"><label class="span-2">Internal title<input name="title" required maxlength="100"></label><label class="span-2">Message<textarea name="body" required rows="7" maxlength="500"></textarea></label><p class="span-2 muted">Saving creates a draft only. A board member must approve it before sending.</p><footer class="modal-actions"><span></span><button type="button" class="button button-secondary" data-close-modal>Cancel</button><button class="button">Save draft</button></footer></form>`);
 }
 
 export function contactsView({ contacts, groups, memberships, filters, selectedIds, modalContact, showImport, importPreview, importResult, createUnknown }) {

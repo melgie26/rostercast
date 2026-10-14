@@ -1,0 +1,7 @@
+.account-root { max-width:1400px; margin:auto; padding:clamp(1rem,4vw,2.5rem) }
+.account-header,.account-toolbar { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap }.account-brand { font-size:1.4rem; color:var(--brand-900) }.account-header p { margin-bottom:0 }.account-header .button { margin-left:1rem }
+.login-card { max-width:530px; margin:2rem auto }.account-root form { display:grid; gap:.8rem }.account-root label { display:grid; gap:.3rem }.login-card form+form { margin-top:1.5rem; padding-top:1.5rem; border-top:1px solid var(--border) }
+.account-grid { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(300px,1fr); gap:1rem; align-items:start }.account-root .header-actions { margin-top:1rem }.account-toolbar label { flex:1; max-width:600px }.account-toolbar span { text-transform:capitalize }
+@media(max-width:850px) { .account-grid { grid-template-columns:1fr } }
+
+.account-grid > * { min-width:0 }

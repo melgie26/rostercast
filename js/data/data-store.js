@@ -37,6 +37,14 @@ export class TenantDataStore {
     this.persist();
     return clone(removed);
   }
+  putMany(organizationId, entries) {
+    // Validate all writes against a temporary store before a single persistence call.
+    const staged = new TenantDataStore(this.database);
+    for (const { table, record } of entries) staged.put(table, organizationId, record);
+    const previous = this.database;
+    this.database = staged.export();
+    try { this.persist(); } catch (error) { this.database = previous; throw error; }
+  }
   export() { return clone(this.database); }
   persist() {}
 }
