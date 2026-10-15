@@ -24,12 +24,11 @@ The workflow is `draft → pending_approval → approved → sent`. Rejection re
 
 The current GitHub Pages build demonstrates these rules but does not provide a security boundary. Production requires:
 
-1. Google OpenID Connect sign-in restricted to `airdriefirefighters.com`.
-2. Server-side verification of the Google ID token, issuer, audience, expiry, and hosted-domain claim.
-3. Server-side membership lookup for both Google Groups. Browser-supplied group claims must not be trusted.
-4. A service account with Google Workspace domain-wide delegation and the minimum read-only group-membership scope, approved by a Workspace super administrator.
-5. Server-side sessions and a shared database for announcements, approvals, deliveries, and audit events.
-6. Authorization on every write endpoint; hiding UI controls is not sufficient.
+1. Email-code authentication restricted to `airdriefirefighters.com`; this is implemented in the account backend through Supabase Auth.
+2. Server-side membership lookup for both Google Groups; this is implemented through the Admin SDK Directory API. Browser-supplied group claims are never trusted.
+3. A service account with Google Workspace domain-wide delegation and the minimum read-only group-membership scope, approved by a Workspace super administrator. Hosted configuration is still required.
+4. Server-side encrypted sessions and shared PostgreSQL storage; the foundation is implemented, but hosting and production acceptance remain outstanding.
+5. Authorization on every write endpoint; hiding UI controls is not sufficient. Board roster writes are now checked against both database membership and the verified Workspace role.
 
-OAuth client IDs and service-account credentials must be configured as hosted secrets and must never be committed to this public repository or delivered to browser code.
+Service-account credentials must be configured as hosted secrets and must never be committed to this public repository or delivered to browser code.
 

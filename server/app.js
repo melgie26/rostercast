@@ -42,7 +42,7 @@ function contactInput(body, editing) {
   if (editing) { if (!['active','inactive'].includes(body.status)) throw new ApiError(400,'Invalid contact status.'); contact.status = body.status; }
   return contact;
 }
-export function createApp(config, gateway) {
+export function createApp(config, gateway, directory = null) {
   const sessions = config.ready ? new Sessions(config) : null;
   const limits = new Map();
   function limit(req, category, maximum) {
@@ -72,13 +72,19 @@ export function createApp(config, gateway) {
       if (req.method!=='GET' && req.headers.origin!==config.origin) throw new ApiError(403,'Request origin rejected.');
       if (req.headers['sec-fetch-site']==='cross-site') throw new ApiError(403,'Cross-site request rejected.');
       if (req.method==='POST' && path==='/api/auth/code') {
-        limit(req,'auth',6); const body=await readJson(req); await gateway.requestCode(email(body.email));
+        limit(req,'auth',6); const body=await readJson(req); const address=email(body.email);
+        if (!directory || directory.acceptsEmail(address)) await gateway.requestCode(address);
         return response(res,200,{ message: 'If your account is enabled, a sign-in code will arrive by email.' });
       }
       if (req.method==='POST' && path==='/api/auth/verify') {
         limit(req,'auth',6); const body=await readJson(req); const address=email(body.email);
         if (typeof body.code!=='string' || !/^\d{6,8}$/.test(body.code)) throw new ApiError(400,'Enter the emailed sign-in code.');
         const session=await gateway.verifyCode(address,body.code);
+        if (directory) {
+          const user=await gateway.user(session.access_token); const access=await directory.resolve(user.email);
+          if (!access.authorized) { await gateway.logout(session.access_token); throw new ApiError(403,'Your Workspace account does not have RosterCast administrative access.'); }
+          session.workspace_role=access.role; session.workspace_email=access.email;
+        }
         res.setHeader('Set-Cookie',sessions.cookie(session)); return response(res,200,{ signed_in: true });
       }
       const session=sessions.read(req.headers.cookie);
@@ -89,7 +95,7 @@ export function createApp(config, gateway) {
       }
       if (!session) { res.setHeader('Set-Cookie',sessions.cookie(null)); throw new ApiError(401,'Sign in to continue.'); }
       const token=session.access_token; const user=await gateway.user(token);
-      if (req.method==='GET' && path==='/api/me') return response(res,200,{ user });
+      if (req.method==='GET' && path==='/api/me') return response(res,200,{ user: { ...user, workspace_role: session.workspace_role ?? null } });
       if (req.method==='GET' && path==='/api/organizations') return response(res,200,{ organizations: await gateway.organizations(token) });
       const match=/^\/api\/organizations\/([^/]+)\/(contacts|groups)(?:\/([^/]+))?$/.exec(path);
       if (!match || !uuid.test(match[1]) || (match[3] && !uuid.test(match[3]))) throw new ApiError(404,'Not found.');
@@ -102,7 +108,7 @@ export function createApp(config, gateway) {
         }
         return response(res,200,{ groups: await gateway.groups(token,organizationId) });
       }
-      if (membership.role!=='organization_admin') throw new ApiError(403,'An organisation administrator is required.');
+      if ((session.workspace_role && session.workspace_role!=='board_admin') || membership.role!=='organization_admin') throw new ApiError(403,'An Executive Board administrator is required.');
       if (entity==='contacts' && ((req.method==='POST' && !id) || (req.method==='PATCH' && id))) {
         return response(res,id ? 200 : 201,{ contact: await gateway.saveContact(token,organizationId,contactInput(await readJson(req),Boolean(id)),id) });
       }

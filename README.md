@@ -57,6 +57,6 @@ The account service supports enabled-user email-code sign-in, HTTP-only encrypte
 
 ## Airdrie Workspace roles
 
-The authorization model now reserves `airdriefirefighters.com` for administrative access. `exec@airdriefirefighters.com` resolves to Executive Board administrators; `stewards@airdriefirefighters.com` resolves to stewards, with Executive Board membership taking precedence because the exec group is nested inside stewards. Stewards may create and submit drafts; only board administrators may approve, reject, or send. See [Workspace access](docs/workspace-access.md).
+The authorization model now reserves `airdriefirefighters.com` for administrative access. `exec@airdriefirefighters.com` resolves to Executive Board administrators; `stewards@airdriefirefighters.com` resolves to stewards, with Executive Board membership taking precedence because the exec group is nested inside stewards. Stewards may create and submit drafts; only board administrators may approve, reject, or send. The account backend verifies these memberships server-side through the Google Admin SDK before issuing a session. See [Workspace access](docs/workspace-access.md).
 
-The public demonstration models this workflow but does not securely query Google Workspace. Production group verification requires Google OAuth and server-side Admin Directory membership lookup using secrets that are never committed to this repository.
+The public demonstration still models the workflow locally. The secure account backend contains the real Directory membership enforcement, but it must be deployed and configured by a Google Workspace administrator before production use.

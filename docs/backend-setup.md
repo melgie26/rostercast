@@ -2,7 +2,7 @@
 
 ## What is implemented
 
-The Node 24 account service supports invite-only email-code sign-in, sign-out, encrypted HTTP-only sessions, organisation selection, shared contact create/edit/deactivation and group creation. It uses Supabase Auth and PostgreSQL through a pinned official SDK. The same user JWT reaches the database; a service-role key is neither needed nor accepted. Permissions are checked both by the server and database row-level security.
+The Node 24 account service supports Airdrie Workspace email-code sign-in, server-side Google Group verification, sign-out, encrypted HTTP-only sessions, organisation selection, shared contact create/edit/deactivation and group creation. It uses Supabase Auth and PostgreSQL through a pinned official SDK. The same user JWT reaches the database; a Supabase service-role key is neither needed nor accepted. Permissions are checked by Workspace group membership, the server and database row-level security.
 
 This is a separate account application, not a security wrapper around the device-local demo. The GitHub Pages demonstration still uses fictional browser data. It is not automatically imported into production. No SMS, subscription charging, CSV import, group assignment or verified consent capture is enabled in the account app yet.
 
@@ -13,10 +13,11 @@ Hosting has not been provisioned. Local PostgreSQL tests emulate Supabase's auth
 1. Create a **new, empty Supabase project in Matt's business-owned account**. Choose Canada Central if available and appropriate for the hosting arrangement; this alone does not guarantee all downstream services/logs stay in Canada. Retain ownership, billing and recovery access. Never use an APFFA-owned account for the platform parent project.
 2. Apply `supabase/migrations/202610130001_accounts.sql` to that project through a controlled migration or the SQL editor. The migration deliberately fails on existing tables of the same name; do not apply it casually to another application's project.
 3. In Authentication, disable public sign-up. Enable email authentication and configure the email template to show `{{ .Token }}` as the sign-in code rather than only a magic link. Use a production mail provider under platform ownership. Set the site URL to the final account application's HTTPS origin and use exact allowed redirects. Configure provider abuse limits and confirm invite-only behaviour; `shouldCreateUser: false` is also enforced by the API.
-4. Create Matt's Auth user through the dashboard, then copy its user UUID. Use the controlled SQL below to create the first organisation and its administrator. Do not put role/organisation access in user-editable metadata. Add future users and memberships through owner-controlled operations until an audited provisioning API is built.
-5. Deploy this repository's Node service to a business-owned host that supports Node 24 or the supplied Dockerfile. Set the start command to `npm start`. GitHub Pages cannot run this service. Keep the static demo at its existing URL; use a separate account origin during rollout.
-6. Set the environment variables from `.env.example` in the host's secret/settings panel. Use the Supabase **publishable** key (`sb_publishable_...`), not a secret or service-role key. Generate a random 32-byte `SESSION_KEY_HEX`. Set `APP_ORIGIN` to the exact HTTPS origin with no path or trailing slash. Expose `/health` as a health check; `accounts_ready: true` means configuration is present, not that all hosted integrations were verified.
-7. Serve the page and API through the same origin. Configure TLS and an ingress with shared request/OTP limits. The in-process rate limit is intentionally conservative and does not trust forwarded IP headers; behind a proxy it may treat all customers as one client. Replace/augment it with correctly configured shared ingress limits before multi-instance use.
+4. In a business-owned Google Cloud project, enable the Admin SDK Directory API and create a dedicated service account. Enable domain-wide delegation for it. In Google Admin Console, authorize only `https://www.googleapis.com/auth/admin.directory.group.member.readonly`. Choose a dedicated Workspace administrator account for delegation; it must be able to read group membership. Store the service-account email, private key and delegated admin address only as hosted secrets.
+5. Create the Auth users through the dashboard, then copy their user UUIDs. Use the controlled SQL below to create the first organisation. Provision Executive Board users as `organization_admin` and Stewards as `viewer`; Google Group verification is an additional, mandatory server-side check. Do not put role or organisation access in user-editable metadata.
+6. Deploy this repository's Node service to a business-owned host that supports Node 24 or the supplied Dockerfile. Set the start command to `npm start`. GitHub Pages cannot run this service. Keep the static demo at its existing URL; use a separate account origin during rollout.
+7. Set every environment variable from `.env.example` in the host's secret/settings panel. Use the Supabase **publishable** key (`sb_publishable_...`), not a secret or service-role key. Generate a random 32-byte `SESSION_KEY_HEX`. Set `APP_ORIGIN` to the exact HTTPS origin with no path or trailing slash. Expose `/health` as a health check; `accounts_ready: true` means configuration is present, not that hosted integrations passed acceptance testing.
+8. Serve the page and API through the same origin. Configure TLS and an ingress with shared request/OTP limits. The in-process rate limit is intentionally conservative and does not trust forwarded IP headers; behind a proxy it may treat all customers as one client. Replace/augment it with correctly configured shared ingress limits before multi-instance use.
 
 Do not paste private keys, cookies, one-time codes or session tokens into chat, source files or GitHub. The example file contains placeholders only. Rotating the session key invalidates existing app cookies.
 
@@ -37,6 +38,8 @@ from organization;
 commit;
 ```
 
+Repeat the membership insert for each enabled Steward using role `viewer`. Workspace authorization checks `exec@airdriefirefighters.com` first because that group is nested inside `stewards@airdriefirefighters.com`; Executive Board therefore resolves to `board_admin`, while other steward-group members resolve to `steward`. Domain members in neither group are denied a RosterCast session.
+
 Membership changes, contact writes, groups and settings are recorded in an append-only audit table accessible to organisation administrators. Audit entries contain field names, actor and entity identifiers, not copies of contact data. The owner can deactivate memberships or pause organisations through controlled SQL. Those changes block database access immediately. Database policies also require the JWT's provider session to remain in `auth.sessions`, closing access after that session is removed. Confirm Supabase's actual sign-out/session behaviour during hosted testing.
 
 ## Local verification
@@ -56,6 +59,7 @@ Tests exercise the actual application migration in an embedded PostgreSQL engine
 ## Hosted acceptance before pilot data
 
 - Verify email delivery, code expiry/reuse and disabled self-registration using controlled test accounts.
+- Verify one Executive Board account, one Steward account and one ordinary domain member. Confirm board precedence for a user present in both groups, steward read-only access and complete denial for the ordinary member. Remove a test user from a group and confirm new sign-in is denied.
 - Use two organisations and admin/viewer accounts. Confirm roster isolation via both the API and direct Supabase client requests; viewers must not write. Forged organisation fields and role metadata must not grant access.
 - Verify a second device sees saved contacts/groups, then test sign-out, expired cookie, deactivated membership and paused organisation. Confirm remaining JWTs lose data access once the provider session is removed.
 - Check the configured origin, Secure/HttpOnly/SameSite cookie, HTTPS, CSP, no-store responses and ingress limits. Confirm hosts/logs do not capture personal data, cookies, codes or JWTs.
