@@ -53,6 +53,8 @@ Open **Usage & billing** to select a Mountain-time reporting month and see simul
 
 See [backend setup](docs/backend-setup.md) for the implemented Node/Supabase account service, database migration, ownership/setup steps and hosted acceptance checks. Run `npm ci && npm start` for the account server; without configuration it displays setup pending. The GitHub Pages demonstration remains independent and device-local. Tests require Node 24 or later; Node 24 is used in CI and the Dockerfile.
 
+`render.yaml` provides the no-cost pilot deployment definition for the protected account service. It uses the existing Docker image and prompts for all credentials in Render; no deployment secret belongs in the repository. Free hosting is for controlled acceptance testing and may sleep or pause after inactivity.
+
 The account service supports enabled-user email-code sign-in, HTTP-only encrypted sessions, organisation-scoped shared contacts and groups, shared announcement drafts, submission, board approval/rejection, version-conflict protection and append-only workflow events. It is not yet connected to a hosted project. Approval does not send an SMS. Actual sends, payments, consent capture, CSV imports and group assignment remain subsequent account workflows.
 
 ## Airdrie Workspace roles

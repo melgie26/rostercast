@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: rostercast-account
+    runtime: docker
+    plan: free
+    branch: main
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    maxShutdownDelaySeconds: 30
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: APP_ORIGIN
+        fromService:
+          type: web
+          name: rostercast-account
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SESSION_KEY_HEX
+        sync: false
+      - key: GOOGLE_WORKSPACE_DOMAIN
+        value: airdriefirefighters.com
+      - key: GOOGLE_EXECUTIVE_GROUP
+        value: exec@airdriefirefighters.com
+      - key: GOOGLE_STEWARD_GROUP
+        value: stewards@airdriefirefighters.com
+      - key: GOOGLE_SERVICE_ACCOUNT_EMAIL
+        sync: false
+      - key: GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
+        sync: false
+      - key: GOOGLE_WORKSPACE_ADMIN_EMAIL
+        sync: false
