@@ -42,6 +42,25 @@ function contactInput(body, editing) {
   if (editing) { if (!['active','inactive'].includes(body.status)) throw new ApiError(400,'Invalid contact status.'); contact.status = body.status; }
   return contact;
 }
+function announcementInput(body) {
+  if (Object.keys(body).some(key=>!['title','body','selection'].includes(key))) throw new ApiError(400,'Unexpected announcement field.');
+  const selection=body.selection;
+  if (!selection || typeof selection!=='object' || Array.isArray(selection) ||
+      Object.keys(selection).some(key=>!['allEligible','groupIds','contactIds'].includes(key)) ||
+      typeof selection.allEligible!=='boolean' || !Array.isArray(selection.groupIds) || !Array.isArray(selection.contactIds)) {
+    throw new ApiError(400,'Choose valid announcement recipients.');
+  }
+  const groupIds=[...new Set(selection.groupIds)], contactIds=[...new Set(selection.contactIds)];
+  if ([...groupIds,...contactIds].some(id=>typeof id!=='string' || !uuid.test(id)) || groupIds.length>100 || contactIds.length>500) {
+    throw new ApiError(400,'Choose valid announcement recipients.');
+  }
+  if (!selection.allEligible && !groupIds.length && !contactIds.length) throw new ApiError(400,'Choose at least one recipient or group.');
+  return { title:text(body.title,120,'announcement title'), body:text(body.body,1600,'announcement message'), selection:{allEligible:selection.allEligible,groupIds,contactIds} };
+}
+function versionInput(value) {
+  if (!Number.isSafeInteger(value) || value<1) throw new ApiError(400,'Invalid announcement version.');
+  return value;
+}
 export function createApp(config, gateway, directory = null) {
   const sessions = config.ready ? new Sessions(config) : null;
   const limits = new Map();
@@ -97,9 +116,28 @@ export function createApp(config, gateway, directory = null) {
       const token=session.access_token; const user=await gateway.user(token);
       if (req.method==='GET' && path==='/api/me') return response(res,200,{ user: { ...user, workspace_role: session.workspace_role ?? null } });
       if (req.method==='GET' && path==='/api/organizations') return response(res,200,{ organizations: await gateway.organizations(token) });
-      const match=/^\/api\/organizations\/([^/]+)\/(contacts|groups)(?:\/([^/]+))?$/.exec(path);
+      const match=/^\/api\/organizations\/([^/]+)\/(contacts|groups|announcements)(?:\/([^/]+))?(?:\/(submit|review))?$/.exec(path);
       if (!match || !uuid.test(match[1]) || (match[3] && !uuid.test(match[3]))) throw new ApiError(404,'Not found.');
-      const [,organizationId,entity,id]=match; const membership=await gateway.membership(token,organizationId);
+      const [,organizationId,entity,id,operation]=match; const membership=await gateway.membership(token,organizationId);
+      const workspaceRole=session.workspace_role ?? (!directory ? (membership.role==='organization_admin' ? 'board_admin' : 'steward') : null);
+      if (entity==='announcements') {
+        if (!['board_admin','steward'].includes(workspaceRole)) throw new ApiError(403,'Announcement access requires an Executive Board or Steward account.');
+        if (req.method==='GET' && !id) return response(res,200,{ announcements:await gateway.announcements(token,organizationId) });
+        if (req.method==='POST' && !id) return response(res,201,{ announcement:await gateway.createAnnouncement(token,organizationId,announcementInput(await readJson(req))) });
+        if (req.method==='POST' && id && operation==='submit') {
+          const body=await readJson(req);
+          if (Object.keys(body).some(key=>key!=='version')) throw new ApiError(400,'Unexpected submission field.');
+          return response(res,200,{ announcement:await gateway.submitAnnouncement(token,organizationId,id,versionInput(body.version)) });
+        }
+        if (req.method==='POST' && id && operation==='review') {
+          if (workspaceRole!=='board_admin' || membership.role!=='organization_admin') throw new ApiError(403,'An Executive Board administrator is required.');
+          const body=await readJson(req);
+          if (Object.keys(body).some(key=>!['version','decision','reason'].includes(key)) || !['approved','rejected'].includes(body.decision)) throw new ApiError(400,'Enter a valid review decision.');
+          const reason=body.decision==='rejected' ? text(body.reason,500,'review note') : '';
+          return response(res,200,{ announcement:await gateway.reviewAnnouncement(token,organizationId,id,versionInput(body.version),body.decision,reason) });
+        }
+        throw new ApiError(405,'Method not allowed.');
+      }
       if (req.method==='GET' && !id) {
         if (entity==='contacts') {
           const page=Number(url.searchParams.get('page') || '0');
@@ -108,7 +146,7 @@ export function createApp(config, gateway, directory = null) {
         }
         return response(res,200,{ groups: await gateway.groups(token,organizationId) });
       }
-      if ((session.workspace_role && session.workspace_role!=='board_admin') || membership.role!=='organization_admin') throw new ApiError(403,'An Executive Board administrator is required.');
+      if (workspaceRole!=='board_admin' || membership.role!=='organization_admin') throw new ApiError(403,'An Executive Board administrator is required.');
       if (entity==='contacts' && ((req.method==='POST' && !id) || (req.method==='PATCH' && id))) {
         return response(res,id ? 200 : 201,{ contact: await gateway.saveContact(token,organizationId,contactInput(await readJson(req),Boolean(id)),id) });
       }

@@ -14,9 +14,12 @@ async function setup(t,overrides={}) {
     requestCode:async()=>{},verifyCode:async()=>session,user:async()=>({id:'demo-user',email:'demo@example.test'}),logout:async()=>{},
     organizations:async()=>[{organization_id:org,role:'organization_admin',organizations:{id:org,name:'Demo'}}],
     membership:async(token,id)=>{if(id!==org)throw new ApiError(403,'No access');return {role:'organization_admin'};},
-    contacts:async()=>[],groups:async()=>[],
+    contacts:async()=>[],groups:async()=>[],announcements:async()=>[],
     saveContact:async(token,id,contact)=>{writes.push({id,contact});return {id:contactId,...contact};},
-    createGroup:async(token,id,name)=>{writes.push({id,name});return {id:contactId,name};},...overrides
+    createGroup:async(token,id,name)=>{writes.push({id,name});return {id:contactId,name};},
+    createAnnouncement:async(token,id,draft)=>{writes.push({id,draft});return {id:contactId,...draft,status:'draft',version:1};},
+    submitAnnouncement:async(token,id,announcement,version)=>{writes.push({id,announcement,version,action:'submit'});return {id:announcement,status:'pending_approval',version:version+1};},
+    reviewAnnouncement:async(token,id,announcement,version,decision,reason)=>{writes.push({id,announcement,version,decision,reason});return {id:announcement,status:decision,version:version+1};},...overrides
   };
   const server=createApp(config,gateway);await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   t.after(()=>new Promise(resolve=>server.close(resolve)));
@@ -75,6 +78,16 @@ test('viewer cannot write, oversized and malformed requests fail closed',async t
   assert.equal((await request('/api/auth/code','POST','{')).status,400);
   assert.equal((await request('/api/auth/code','POST',{email:'demo@example.test'},{'content-type':'text/plain'})).status,415);
   assert.equal((await request('/api/auth/code','POST',{email:'x'.repeat(9000)})).status,413);
+});
+test('announcement API validates selections and supports the approval workflow',async t=>{
+  const {request,writes}=await setup(t); const path=`/api/organizations/${org}/announcements`;
+  assert.equal((await request(path,'POST',{title:'Notice',body:'Fictional message.',selection:{allEligible:false,groupIds:[],contactIds:[]}})).status,400);
+  const created=await request(path,'POST',{title:'Notice',body:'Fictional message.',selection:{allEligible:true,groupIds:[],contactIds:[]}});
+  assert.equal(created.status,201);
+  assert.equal((await request(`${path}/${contactId}/submit`,'POST',{version:1})).status,200);
+  assert.equal((await request(`${path}/${contactId}/review`,'POST',{version:2,decision:'approved'})).status,200);
+  assert.equal(writes.length,3);
+  assert.equal(writes[0].draft.selection.allEligible,true); assert.equal(writes[2].decision,'approved');
 });
 test('OTP endpoint has a bounded request rate and does not enumerate accounts',async t=>{
   const {request}=await setup(t);

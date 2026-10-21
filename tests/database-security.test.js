@@ -16,7 +16,9 @@ async function setup() {
     create function auth.uid() returns uuid language sql stable as $$ select (auth.jwt()->>'sub')::uuid $$;
     grant usage on schema auth,public to authenticated,anon;
     grant execute on function auth.uid(),auth.jwt() to authenticated,anon;`);
-  await db.exec(await readFile(new URL('../supabase/migrations/202610130001_accounts.sql',import.meta.url),'utf8'));
+  for (const migration of ['202610130001_accounts.sql','202610200001_announcement_approvals.sql']) {
+    await db.exec(await readFile(new URL(`../supabase/migrations/${migration}`,import.meta.url),'utf8'));
+  }
   await db.exec(`insert into auth.users values('${admin}'),('${viewer}'),('${outsider}');
     insert into auth.sessions values('${sessions[admin]}','${admin}'),('${sessions[viewer]}','${viewer}'),('${sessions[outsider]}','${outsider}');
     insert into public.organizations(id,name,short_name) values('${orgA}','Local A','A'),('${orgB}','Local B','B');
@@ -91,5 +93,38 @@ test('revoked membership, paused organisation or removed auth session loses acce
     await db.query(`update public.organization_users set active=true where user_id='${viewer}'`);
     await db.query(`update public.organizations set status='paused' where id='${orgA}'`);
     await asUser(db,viewer); assert.equal((await db.query('select * from public.contacts')).rows.length,0);
+  } finally {await db.close();}
+});
+test('stewards can draft and submit while only board administrators can review', async()=>{
+  const db=await setup();
+  try {
+    const selection=JSON.stringify({allEligible:true,groupIds:[],contactIds:[]});
+    await asUser(db,viewer);
+    const draft=(await db.query(`select * from public.create_announcement_draft($1,$2,$3,$4::jsonb)`,[orgA,'Shift update','Fictional message.',selection])).rows[0];
+    assert.equal(draft.status,'draft'); assert.equal(draft.created_by,viewer); assert.equal(draft.version,1);
+    const submitted=(await db.query(`select * from public.submit_announcement($1,$2,$3)`,[orgA,draft.id,1])).rows[0];
+    assert.equal(submitted.status,'pending_approval'); assert.equal(submitted.submitted_by,viewer); assert.equal(submitted.version,2);
+    await assert.rejects(db.query(`select * from public.review_announcement($1,$2,$3,$4,$5)`,[orgA,draft.id,2,'approved',null]),/Board review/);
+    await asUser(db,admin);
+    const approved=(await db.query(`select * from public.review_announcement($1,$2,$3,$4,$5)`,[orgA,draft.id,2,'approved',null])).rows[0];
+    assert.equal(approved.status,'approved'); assert.equal(approved.reviewed_by,admin); assert.equal(approved.version,3);
+    const events=(await db.query(`select action from public.announcement_events where announcement_id=$1 order by id`,[draft.id])).rows.map(row=>row.action);
+    assert.deepEqual(events,['created','submitted','approved']);
+  } finally {await db.close();}
+});
+test('announcement workflow rejects cross-tenant access, stale reviews and direct writes', async()=>{
+  const db=await setup();
+  try {
+    await asUser(db,viewer);
+    await assert.rejects(db.query(`select * from public.create_announcement_draft($1,$2,$3,$4::jsonb)`,[orgB,'Hidden','Message',JSON.stringify({allEligible:true,groupIds:[],contactIds:[]})]),/not permitted/);
+    await assert.rejects(db.query(`select * from public.create_announcement_draft($1,$2,$3,$4::jsonb)`,[orgA,'Forged selection','Message',JSON.stringify({allEligible:false,groupIds:[],contactIds:[cB]})]),/Recipient selection is invalid/);
+    await assert.rejects(db.query(`insert into public.announcements(organization_id,title,body,selection_snapshot,created_by) values($1,'Forged','Message',$2::jsonb,$3)`,[orgA,JSON.stringify({allEligible:true,groupIds:[],contactIds:[]}),viewer]),/permission denied/);
+    await asUser(db,admin);
+    const draft=(await db.query(`select * from public.create_announcement_draft($1,$2,$3,$4::jsonb)`,[orgA,'Review','Message',JSON.stringify({allEligible:true,groupIds:[],contactIds:[]})])).rows[0];
+    await db.query(`select * from public.submit_announcement($1,$2,$3)`,[orgA,draft.id,1]);
+    await db.query(`select * from public.review_announcement($1,$2,$3,$4,$5)`,[orgA,draft.id,2,'rejected','Please clarify timing.']);
+    await assert.rejects(db.query(`select * from public.review_announcement($1,$2,$3,$4,$5)`,[orgA,draft.id,2,'approved',null]),/changed or is no longer/);
+    const record=(await db.query(`select status,rejection_reason from public.announcements where id=$1`,[draft.id])).rows[0];
+    assert.deepEqual(record,{status:'rejected',rejection_reason:'Please clarify timing.'});
   } finally {await db.close();}
 });

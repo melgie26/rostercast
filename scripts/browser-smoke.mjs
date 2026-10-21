@@ -5,25 +5,31 @@ import { ApiError } from '../server/supabase-gateway.js';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 const org='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-const contacts=[],groups=[];
+const contacts=[],groups=[],announcements=[];
 let revoked=false;
 const gateway={
   requestCode:async()=>{},verifyCode:async()=>{revoked=false;return {access_token:'fixture-token',expires_at:Date.now()/1000+1800};},
   user:async()=>{if(revoked)throw new ApiError(401,'Sign in again.');return {id:'fixture-user',email:'demo@example.test'};},logout:async()=>{revoked=true;},
   organizations:async()=>[{organization_id:org,role:'organization_admin',organizations:{id:org,name:'Fictional Local'}}],
-  membership:async()=>({role:'organization_admin'}),contacts:async()=>contacts,groups:async()=>groups,
+  membership:async()=>({role:'organization_admin'}),contacts:async()=>contacts,groups:async()=>groups,announcements:async()=>announcements,
   saveContact:async(token,id,contact,contactId)=>{const record={id:contactId||'cccccccc-cccc-4ccc-8ccc-cccccccccccc',...contact,consent_status:'unknown',status:contact.status||'active'};if(contactId)contacts[0]=record;else contacts.push(record);return record;},
-  createGroup:async(token,id,name)=>{const group={id:'dddddddd-dddd-4ddd-8ddd-dddddddddddd',name,archived:false};groups.push(group);return group;}
+  createGroup:async(token,id,name)=>{const group={id:'dddddddd-dddd-4ddd-8ddd-dddddddddddd',name,archived:false};groups.push(group);return group;},
+  createAnnouncement:async(token,id,draft)=>{const announcement={id:'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',...draft,selection_snapshot:draft.selection,status:'draft',version:1};announcements.unshift(announcement);return announcement;},
+  submitAnnouncement:async(token,id,announcementId,version)=>Object.assign(announcements.find(a=>a.id===announcementId),{status:'pending_approval',version:version+1}),
+  reviewAnnouncement:async(token,id,announcementId,version,decision,reason)=>Object.assign(announcements.find(a=>a.id===announcementId),{status:decision,version:version+1,rejection_reason:reason||null})
 };
-const account=createApp({ready:true,production:false,origin:'http://localhost:39123',key:'ab'.repeat(32)},gateway);
+const directory={acceptsEmail:()=>true,resolve:async email=>({authorized:true,role:'board_admin',email})};
+const account=createApp({ready:true,production:false,origin:'http://localhost:39123',key:'ab'.repeat(32)},gateway,directory);
 await new Promise(resolve=>account.listen(39123,'127.0.0.1',resolve));
 // Static prototype server for a regression check of existing public routes.
-const baseDir=resolve(new URL('../',import.meta.url).pathname);
+const baseDir=resolve(fileURLToPath(new URL('../',import.meta.url)));
 const demo=createServer(async(req,res)=>{
-  const path=resolve(baseDir, '.'+new URL(req.url,'http://localhost').pathname);
-  if(path!==baseDir && !path.startsWith(baseDir+sep)){res.writeHead(404);return res.end();}
-  try {const file=path===baseDir ? path+'/index.html' : path;const data=await readFile(file);res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html');res.end(data);}catch{res.writeHead(404);res.end();}
+  const pathname=new URL(req.url,'http://localhost').pathname;
+  const file=pathname==='/' ? resolve(baseDir,'index.html') : resolve(baseDir,'.'+pathname);
+  if(!file.startsWith(baseDir+sep)){res.writeHead(404);return res.end();}
+  try {const data=await readFile(file);res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html');res.end(data);}catch{res.writeHead(404);res.end();}
 });
 await new Promise(resolve=>demo.listen(39124,'127.0.0.1',resolve));
 let browser;
@@ -40,6 +46,14 @@ try {
   await page.locator('#verify-code button').click();
   try { await page.getByRole('heading',{name:'Contacts',exact:true}).waitFor(); } catch(error) { console.log('Account state on failure:',await page.locator('body').innerText());console.log('Browser errors:',errors);throw error; }
   console.log('Account sign-in passed.');
+  await page.locator('#announcement-form [name="title"]').fill('Shared browser draft');
+  await page.locator('#announcement-form [name="body"]').fill('Fictional shared message.');
+  await page.locator('#announcement-form [name="allEligible"]').check();
+  await page.locator('#announcement-form button').click();
+  await page.getByRole('heading',{name:'Shared browser draft',exact:true}).waitFor();
+  await page.getByRole('button',{name:'Submit for approval',exact:true}).click();
+  await page.getByRole('button',{name:'Approve',exact:true}).click();
+  await page.getByText('approved',{exact:true}).waitFor();
   await page.locator('#contact-form [name="first_name"]').fill('Fictional');
   await page.locator('#contact-form [name="last_name"]').fill('Member');
   await page.locator('#contact-form [name="mobile"]').fill('4035550101');
@@ -58,7 +72,7 @@ try {
   await second.getByRole('cell',{name:'Fictional Member',exact:true}).waitFor();await second.close();
   await page.setViewportSize({width:390,height:844});
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
-  await page.locator('#logout').click();await page.getByRole('heading',{name:'Sign in',exact:true}).waitFor();
+  await page.locator('#logout').click();await page.getByRole('heading',{name:/Sign in with your Airdrie Workspace account/}).waitFor();
   assert.equal(await page.evaluate(()=>localStorage.length),0);
   assert.equal(await page.evaluate(()=>document.cookie),'');
   assert.deepEqual(errors,[]);

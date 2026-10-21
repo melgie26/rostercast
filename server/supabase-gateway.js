@@ -36,6 +36,8 @@ export class SupabaseGateway {
     if (error) {
       if (error.code === '23505') throw new ApiError(409, 'That phone number or group already exists in this organisation.');
       if (error.code === '42501') throw new ApiError(403, 'Your account cannot perform this action.');
+      if (error.code === '40001') throw new ApiError(409, 'This announcement changed. Refresh it and try again.');
+      if (error.code === '22023' || error.code === '23514') throw new ApiError(400, 'The announcement request is invalid.');
       throw new ApiError(503, 'The account database is temporarily unavailable.');
     }
     return data;
@@ -64,5 +66,17 @@ export class SupabaseGateway {
   }
   async createGroup(token, organizationId, name) {
     return this.result(await this.client(token).from('groups').insert({ organization_id: organizationId, name }).select('id,name,archived').single());
+  }
+  async announcements(token, organizationId) {
+    return this.result(await this.client(token).from('announcements').select('id,title,body,selection_snapshot,status,version,created_by,submitted_at,reviewed_at,rejection_reason,created_at,updated_at').eq('organization_id',organizationId).order('updated_at',{ascending:false}).limit(100));
+  }
+  async createAnnouncement(token, organizationId, draft) {
+    return this.result(await this.client(token).rpc('create_announcement_draft',{org:organizationId,announcement_title:draft.title,announcement_body:draft.body,selection:draft.selection}));
+  }
+  async submitAnnouncement(token, organizationId, id, version) {
+    return this.result(await this.client(token).rpc('submit_announcement',{org:organizationId,announcement:id,expected_version:version}));
+  }
+  async reviewAnnouncement(token, organizationId, id, version, decision, reason) {
+    return this.result(await this.client(token).rpc('review_announcement',{org:organizationId,announcement:id,expected_version:version,decision,reason:reason || null}));
   }
 }

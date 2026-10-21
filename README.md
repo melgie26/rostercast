@@ -1,6 +1,6 @@
 # RosterCast
 
-RosterCast is a multi-tenant SMS announcement platform prototype for membership organizations, owned by Matt Elgie. The prototype includes contact and group management, staged CSV import, an Announcement composer, recipient review, test preview, confirmed simulated delivery, and historical delivery detail. Twilio is selected for the future server-side integration. The static demonstration does **not** send real SMS, authenticate users, take payments, call AI providers, or contain real member data. A separate account backend is now implemented for hosted authentication and shared roster management; it requires owner-controlled hosting configuration.
+RosterCast is a multi-tenant SMS announcement platform prototype for membership organizations, owned by Matt Elgie. The prototype includes contact and group management, staged CSV import, an Announcement composer, recipient review, test preview, confirmed simulated delivery, and historical delivery detail. Twilio is selected for the future server-side integration. The static demonstration does **not** send real SMS, authenticate users, take payments, call AI providers, or contain real member data. A separate account backend now provides hosted authentication, shared roster management and a durable steward-to-board announcement approval queue; it requires owner-controlled hosting configuration.
 
 ## Run locally
 
@@ -53,7 +53,7 @@ Open **Usage & billing** to select a Mountain-time reporting month and see simul
 
 See [backend setup](docs/backend-setup.md) for the implemented Node/Supabase account service, database migration, ownership/setup steps and hosted acceptance checks. Run `npm ci && npm start` for the account server; without configuration it displays setup pending. The GitHub Pages demonstration remains independent and device-local. Tests require Node 24 or later; Node 24 is used in CI and the Dockerfile.
 
-The account service supports enabled-user email-code sign-in, HTTP-only encrypted sessions, organisation-scoped shared contacts and group creation. It is not yet connected to a hosted project. Actual sends, payments, consent capture, CSV imports and group assignment remain subsequent account workflows.
+The account service supports enabled-user email-code sign-in, HTTP-only encrypted sessions, organisation-scoped shared contacts and groups, shared announcement drafts, submission, board approval/rejection, version-conflict protection and append-only workflow events. It is not yet connected to a hosted project. Approval does not send an SMS. Actual sends, payments, consent capture, CSV imports and group assignment remain subsequent account workflows.
 
 ## Airdrie Workspace roles
 
